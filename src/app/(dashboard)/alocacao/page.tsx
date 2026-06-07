@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { portfolio } from "@/lib/mock-data";
+import { getPortfolio } from "@/lib/portfolio-repo";
 import {
   allocationByClass,
   allocationBySubtype,
@@ -38,7 +38,8 @@ const CLASS_ORDER: AssetClass[] = [
 
 export const metadata = { title: "Alocação · Investly" };
 
-export default function AlocacaoPage() {
+export default async function AlocacaoPage() {
+  const portfolio = await getPortfolio();
   const enriched = enrichPositions(portfolio);
   const byClass = allocationByClass(enriched);
   const total = byClass.reduce((s, c) => s + c.value, 0);

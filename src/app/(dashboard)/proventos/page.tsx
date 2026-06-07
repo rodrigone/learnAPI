@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { portfolio } from "@/lib/mock-data";
+import { getPortfolio } from "@/lib/portfolio-repo";
 import {
   dividendToBRL,
   incomeByAsset,
@@ -41,7 +41,8 @@ const TYPE_COLORS: Record<DividendType, string> = {
   cupom: "var(--chart-5)",
 };
 
-export default function ProventosPage() {
+export default async function ProventosPage() {
+  const portfolio = await getPortfolio();
   const fx = portfolio.usdToBrl;
   const monthly = incomeByMonth(portfolio, 12);
   const total12m = incomeInLastMonths(portfolio, 12);
