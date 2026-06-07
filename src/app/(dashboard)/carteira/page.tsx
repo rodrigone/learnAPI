@@ -1,12 +1,13 @@
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PositionsTable } from "@/components/dashboard/positions-table";
-import { portfolio } from "@/lib/mock-data";
+import { getPortfolio } from "@/lib/portfolio-repo";
 import { enrichPositions } from "@/lib/portfolio";
 import { formatDate } from "@/lib/format";
 
 export const metadata = { title: "Carteira · Investly" };
 
-export default function CarteiraPage() {
+export default async function CarteiraPage() {
+  const portfolio = await getPortfolio();
   const enriched = enrichPositions(portfolio);
 
   return (

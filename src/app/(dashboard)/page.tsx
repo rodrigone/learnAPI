@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { portfolio } from "@/lib/mock-data";
+import { getPortfolio } from "@/lib/portfolio-repo";
 import {
   allocationByClass,
   enrichPositions,
@@ -39,7 +39,8 @@ import {
 } from "@/lib/format";
 import { dividendToBRL } from "@/lib/portfolio";
 
-export default function OverviewPage() {
+export default async function OverviewPage() {
+  const portfolio = await getPortfolio();
   const enriched = enrichPositions(portfolio);
   const totals = portfolioTotals(enriched, portfolio);
   const valueSeries = portfolioValueSeries(portfolio);

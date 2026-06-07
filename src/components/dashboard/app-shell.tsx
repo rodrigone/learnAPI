@@ -13,7 +13,6 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { formatDate } from "@/lib/format";
-import { portfolio } from "@/lib/mock-data";
 
 function Brand() {
   return (
@@ -29,7 +28,13 @@ function Brand() {
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  asOf,
+}: {
+  children: React.ReactNode;
+  asOf: string;
+}) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
@@ -42,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <div className="text-muted-foreground border-t pt-4 text-xs">
           <p>Extrato BTG</p>
-          <p className="text-foreground font-medium">{formatDate(portfolio.asOf)}</p>
+          <p className="text-foreground font-medium">{formatDate(asOf)}</p>
         </div>
       </aside>
 
