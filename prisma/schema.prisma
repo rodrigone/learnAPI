@@ -1,0 +1,129 @@
+// Prisma + SQLite — armazenamento local da carteira.
+// Atualizado pelo import do extrato BTG (posições/proventos) e pelo job de
+// cotações do Yahoo Finance (preços/P-L/balanços). Enums ficam como String
+// porque SQLite não tem enum nativo; os valores válidos vivem em src/lib/types.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Cada upload de extrato gera um snapshot datado (preserva histórico).
+model StatementSnapshot {
+  id        String     @id @default(cuid())
+  broker    String     @default("BTG")
+  /// Data de referência do extrato (YYYY-MM-DD).
+  asOf      String
+  /// Nome do arquivo de origem, para rastreabilidade.
+  source    String?
+  createdAt DateTime   @default(now())
+  positions Position[]
+  dividends Dividend[]
+
+  @@unique([broker, asOf])
+}
+
+model Asset {
+  id            String   @id @default(cuid())
+  /// Código de negociação (PETR4, AAPL, MXRF11, CDB-..., LTN, ...).
+  ticker        String   @unique
+  /// Símbolo no Yahoo Finance (PETR4.SA, AAPL). Nulo para RF/fundos.
+  yahooSymbol   String?
+  name          String
+  class         String
+  subtype       String
+  currency      String
+  sector        String?
+  /// True para renda variável (tem cotação, gráfico de preço e P/L).
+  hasMarketData Boolean  @default(false)
+
+  positions      Position[]
+  dividends      Dividend[]
+  pricePoints    PricePoint[]
+  peRatioPoints  PeRatioPoint[]
+  balanceSheets  BalanceSheetYear[]
+}
+
+model Position {
+  id           String            @id @default(cuid())
+  asset        Asset             @relation(fields: [assetId], references: [id])
+  assetId      String
+  snapshot     StatementSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  snapshotId   String
+  quantity     Float
+  /// Preço médio de compra, na moeda do ativo.
+  avgPrice     Float
+  /// Cotação/preço unitário no extrato, na moeda do ativo.
+  currentPrice Float
+
+  @@unique([snapshotId, assetId])
+}
+
+model Dividend {
+  id             String             @id @default(cuid())
+  asset          Asset              @relation(fields: [assetId], references: [id])
+  assetId        String
+  snapshot       StatementSnapshot? @relation(fields: [snapshotId], references: [id], onDelete: SetNull)
+  snapshotId     String?
+  /// dividendo | jcp | rendimento | cupom
+  type           String
+  /// Data de pagamento/liquidação (YYYY-MM-DD).
+  date           String
+  amountPerShare Float?
+  /// Valor total recebido, na moeda do ativo.
+  total          Float
+  currency       String
+
+  @@unique([assetId, type, date, total])
+}
+
+/// Série histórica de preços (Yahoo Finance), 1 ponto por dia.
+model PricePoint {
+  id      String @id @default(cuid())
+  asset   Asset  @relation(fields: [assetId], references: [id])
+  assetId String
+  date    String
+  close   Float
+
+  @@unique([assetId, date])
+}
+
+/// Série histórica do múltiplo P/L (Yahoo Finance).
+model PeRatioPoint {
+  id      String @id @default(cuid())
+  asset   Asset  @relation(fields: [assetId], references: [id])
+  assetId String
+  date    String
+  pe      Float
+
+  @@unique([assetId, date])
+}
+
+model BalanceSheetYear {
+  id               String @id @default(cuid())
+  asset            Asset  @relation(fields: [assetId], references: [id])
+  assetId          String
+  year             Int
+  revenue          Float
+  netIncome        Float
+  totalAssets      Float
+  totalLiabilities Float
+  equity           Float
+
+  @@unique([assetId, year])
+}
+
+/// Câmbio diário (ex.: USD→BRL) para consolidar a carteira em reais.
+model FxRate {
+  id    String @id @default(cuid())
+  base  String
+  quote String
+  date  String
+  rate  Float
+
+  @@unique([base, quote, date])
+}

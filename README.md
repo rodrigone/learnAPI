@@ -4,9 +4,10 @@ Dashboard financeiro pessoal para acompanhar a carteira: cotações diárias,
 histórico de preço, múltiplo P/L, proventos, balanços das empresas e alocação
 por classe de ativo. Interface limpa e **responsiva** (desktop + mobile).
 
-> Status: **Fase 1 — Fundação + UI com dados de exemplo (mock).**
-> A camada de dados real (import do extrato BTG + cotações Yahoo Finance) está
-> projetada e documentada abaixo, pronta para a Fase 2.
+> Status: **Fase 2a — Camada de dados + import do BTG (implementada).**
+> As posições agora são **reais** (extrato BTG Pactual + BTG Internacional).
+> As séries de preço/P-L/balanço ainda são sintéticas até a integração com o
+> Yahoo Finance (Fase 2b).
 
 ## Stack
 
@@ -65,7 +66,41 @@ src/
 - **Balanços**: receita, lucro líquido, margem, patrimônio líquido e
   demonstrativo anual (5 anos) por empresa.
 
-## Roadmap do backend (Fase 2)
+## Camada de dados & import (Fase 2a — implementada)
+
+Banco local **SQLite + Prisma** (`prisma/schema.prisma`). Os modelos espelham
+o domínio: `Asset`, `Position`, `StatementSnapshot`, `Dividend`, `PricePoint`,
+`PeRatioPoint`, `BalanceSheetYear`, `FxRate`.
+
+```bash
+pnpm db:push      # cria/atualiza o banco (prisma/dev.db)
+pnpm db:seed      # popula com a carteira atual (holdings reais + séries)
+pnpm db:studio    # inspeciona os dados no Prisma Studio
+```
+
+### Importar um extrato BTG
+
+```bash
+# Extrato da Conta Investimento (renda fixa + renda variável BR)
+pnpm run import data/private/btg_br_2026-04-18.xlsx
+
+# Carteira internacional (BTG Internacional / Avenue, em JSON)
+pnpm run import data/private/btg_intl_posicoes.json
+```
+
+Cada import cria um **snapshot datado** (idempotente por `broker + asOf`).
+Parser em `src/lib/btg/`:
+- `parse-br.ts` — percorre as planilhas do extrato (ações, FIIs, CDB/LCI,
+  Tesouro) e extrai posições + proventos (dividendos, JCP, rendimentos).
+- `parse-intl.ts` — lê a carteira internacional (JSON).
+- `classify.ts` — mapeia cada instrumento para classe/subtipo + símbolo Yahoo.
+
+> **Privacidade:** extratos reais (com CPF/conta) ficam em `data/private/`,
+> que está no `.gitignore`. Apenas uma amostra sintética
+> (`data/sample/btg_br_sample.xlsx`, gerada por `pnpm make:sample`) é versionada
+> para testar o parser.
+
+## Roadmap do backend (Fase 2b+)
 
 O modelo em `src/lib/types.ts` é o contrato entre a UI e os dados. A Fase 2
 liga esse contrato a duas fontes:
