@@ -1,13 +1,42 @@
-import { prisma } from "../src/lib/db";
-import type { ParsedStatement } from "../src/lib/btg/types";
+import "server-only";
+
+import * as XLSX from "xlsx";
+
+import { prisma } from "./db";
+import { parseBtgBr } from "./btg/parse-br";
+import { parseBtgIntl } from "./btg/parse-intl";
+import type { ParsedStatement } from "./btg/types";
+
+/** Roteia o arquivo para o parser certo conforme a extensão. */
+export function parseBtgFile(
+  name: string,
+  data: ArrayBuffer | Buffer
+): ParsedStatement {
+  const ext = name.toLowerCase().split(".").pop();
+  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  if (ext === "json") {
+    return parseBtgIntl(JSON.parse(buffer.toString("utf8")), { source: name });
+  }
+  const wb = XLSX.read(buffer, { type: "buffer" });
+  return parseBtgBr(wb, { source: name });
+}
+
+export interface ImportResult {
+  snapshotId: string;
+  broker: string;
+  asOf: string;
+  assets: number;
+  positions: number;
+  dividends: number;
+}
 
 /**
- * Persiste um extrato normalizado no banco: cria/atualiza os ativos e grava um
- * snapshot datado com as posições e proventos. Reexecutar com o mesmo
- * (broker, asOf) substitui o snapshot anterior (idempotente).
+ * Persiste um extrato normalizado: upsert dos ativos + snapshot datado
+ * (idempotente por broker+asOf) com posições e proventos.
  */
-export async function upsertStatement(stmt: ParsedStatement) {
-  // 1. Upsert dos ativos.
+export async function upsertStatement(
+  stmt: ParsedStatement
+): Promise<ImportResult> {
   const assetIdByTicker = new Map<string, string>();
   for (const p of stmt.positions) {
     const asset = await prisma.asset.upsert({
@@ -35,7 +64,6 @@ export async function upsertStatement(stmt: ParsedStatement) {
     assetIdByTicker.set(p.ticker, asset.id);
   }
 
-  // 2. Recria o snapshot (broker + asOf).
   await prisma.statementSnapshot.deleteMany({
     where: { broker: stmt.broker, asOf: stmt.asOf },
   });
@@ -43,7 +71,6 @@ export async function upsertStatement(stmt: ParsedStatement) {
     data: { broker: stmt.broker, asOf: stmt.asOf, source: stmt.source },
   });
 
-  // 3. Posições.
   for (const p of stmt.positions) {
     await prisma.position.create({
       data: {
@@ -56,7 +83,6 @@ export async function upsertStatement(stmt: ParsedStatement) {
     });
   }
 
-  // 4. Proventos (alguns ativos de provento podem não estar nas posições).
   for (const d of stmt.dividends) {
     let assetId = assetIdByTicker.get(d.ticker);
     if (!assetId) {
@@ -88,6 +114,8 @@ export async function upsertStatement(stmt: ParsedStatement) {
 
   return {
     snapshotId: snapshot.id,
+    broker: stmt.broker,
+    asOf: stmt.asOf,
     assets: assetIdByTicker.size,
     positions: stmt.positions.length,
     dividends: stmt.dividends.length,

@@ -1,0 +1,32 @@
+# Sincronização agendada com o Yahoo Finance.
+# Para ativar: renomeie para `sync.yml` e configure o secret DATABASE_URL
+# apontando para um banco PERSISTENTE (Postgres gerenciado — Neon/Supabase),
+# não SQLite, já que o runner do CI é efêmero.
+#
+# Em produção (Vercel + Postgres), este workflow roda o `pnpm sync` no horário
+# agendado e atualiza preços/P-L/balanços direto no banco que a app consome.
+
+name: sync-market
+
+on:
+  schedule:
+    - cron: "0 22 * * 1-5" # dias úteis, ~19h BRT (após fechamento da B3)
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm sync
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

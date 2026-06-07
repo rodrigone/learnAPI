@@ -6,6 +6,7 @@ import {
   Coins,
   FileBarChart,
   PieChart,
+  UploadCloud,
 } from "lucide-react";
 
 export interface NavItem {
@@ -51,5 +52,11 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Balanços",
     icon: FileBarChart,
     description: "Evolução dos resultados das empresas",
+  },
+  {
+    href: "/importar",
+    label: "Importar",
+    icon: UploadCloud,
+    description: "Enviar extrato do BTG",
   },
 ];
