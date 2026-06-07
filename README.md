@@ -4,10 +4,10 @@ Dashboard financeiro pessoal para acompanhar a carteira: cotações diárias,
 histórico de preço, múltiplo P/L, proventos, balanços das empresas e alocação
 por classe de ativo. Interface limpa e **responsiva** (desktop + mobile).
 
-> Status: **Fase 2a — Camada de dados + import do BTG (implementada).**
-> As posições agora são **reais** (extrato BTG Pactual + BTG Internacional).
-> As séries de preço/P-L/balanço ainda são sintéticas até a integração com o
-> Yahoo Finance (Fase 2b).
+> Status: **Fase 2b — Import do BTG + sincronização Yahoo Finance.**
+> Posições reais (extrato BTG Pactual + BTG Internacional) e pipeline de
+> cotações/P-L/balanços via Yahoo Finance (`pnpm sync`, rodar localmente).
+> Falta apenas ler do banco em runtime na UI (Fase 2c).
 
 ## Stack
 
@@ -100,7 +100,29 @@ Parser em `src/lib/btg/`:
 > (`data/sample/btg_br_sample.xlsx`, gerada por `pnpm make:sample`) é versionada
 > para testar o parser.
 
-## Roadmap do backend (Fase 2b+)
+## Sincronização com o Yahoo Finance (Fase 2b)
+
+Atualiza preços, P/L e balanços a partir do Yahoo Finance (`src/lib/yahoo.ts`).
+
+```bash
+pnpm sync   # roda na SUA máquina (precisa de acesso a query*.finance.yahoo.com)
+```
+
+O `pnpm sync` (`scripts/sync-market.ts`) é incremental/idempotente e:
+- baixa o histórico mensal de preços (5 anos) → `PricePoint`;
+- atualiza o **preço atual** das posições do último snapshot;
+- deriva a série de **P/L** (preço ÷ LPA atual) → `PeRatioPoint`;
+- importa **receita e lucro líquido** anuais (income statement) → `BalanceSheetYear`;
+- atualiza o **câmbio USD→BRL** → `FxRate`.
+
+> Símbolos: B3 usa sufixo `.SA` (`PETR4.SA`); internacionais usam o ticker
+> direto (`AAPL`); `BRK.B` → `BRK-B`.
+>
+> ⚠️ A sincronização **não roda no sandbox** do Claude Code (a política de rede
+> bloqueia o host do Yahoo). Rode localmente. Receita/lucro são reais; a
+> estrutura patrimonial (ativo/passivo/PL) é estimada até uma fonte dedicada.
+
+## Roadmap do backend (Fase 2c+)
 
 O modelo em `src/lib/types.ts` é o contrato entre a UI e os dados. A Fase 2
 liga esse contrato a duas fontes:
