@@ -1,32 +1,24 @@
 import { readFileSync } from "node:fs";
-import { basename, extname } from "node:path";
-import * as XLSX from "xlsx";
+import { basename } from "node:path";
 
-import { parseBtgBr } from "../src/lib/btg/parse-br";
-import { parseBtgIntl } from "../src/lib/btg/parse-intl";
-import { upsertStatement } from "./upsert-statement";
+import { parseBtgFile, upsertStatement } from "../src/lib/import-statement";
 import { prisma } from "../src/lib/db";
 
 /**
  * CLI: importa um extrato BTG para o banco.
  *
- *   pnpm import data/private/btg_br_2026-04-18.xlsx
- *   pnpm import data/private/btg_intl_posicoes.json
+ *   pnpm run import data/private/btg_br_2026-04-18.xlsx
+ *   pnpm run import data/private/btg_intl_posicoes.json
  */
 async function main() {
   const file = process.argv[2];
   if (!file) {
-    console.error("Uso: pnpm import <caminho-do-extrato.(xlsx|json)>");
+    console.error("Uso: pnpm run import <caminho-do-extrato.(xlsx|json)>");
     process.exit(1);
   }
 
-  const ext = extname(file).toLowerCase();
   const source = basename(file);
-
-  const stmt =
-    ext === ".json"
-      ? parseBtgIntl(JSON.parse(readFileSync(file, "utf8")), { source })
-      : parseBtgBr(XLSX.readFile(file), { source });
+  const stmt = parseBtgFile(source, readFileSync(file));
 
   if (stmt.positions.length === 0) {
     console.warn("⚠️  Nenhuma posição encontrada — verifique o formato do arquivo.");
@@ -34,7 +26,7 @@ async function main() {
 
   const result = await upsertStatement(stmt);
   console.log(
-    `✓ Importado ${source} (${stmt.broker}, ref. ${stmt.asOf}): ` +
+    `✓ Importado ${source} (${result.broker}, ref. ${result.asOf}): ` +
       `${result.positions} posições, ${result.dividends} proventos, ` +
       `${result.assets} ativos.`
   );
