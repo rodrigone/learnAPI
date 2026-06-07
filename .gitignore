@@ -49,3 +49,6 @@ next-env.d.ts
 
 # manter exemplo de env versionado
 !.env.example
+
+# git bundles (artefatos de migração)
+*.bundle
