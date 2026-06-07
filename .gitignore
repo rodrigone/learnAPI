@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Banco local e dados privados
+/prisma/dev.db
+/prisma/*.db
+*.db
+/data/private/
+/src/generated/
+
+# manter exemplo de env versionado
+!.env.example
