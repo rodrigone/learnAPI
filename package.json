@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "import": "tsx scripts/import-btg.ts",
+    "sync": "tsx scripts/sync-market.ts",
     "make:sample": "tsx scripts/make-sample.ts"
   },
   "prisma": {
@@ -43,6 +44,7 @@
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
     "xlsx": "^0.18.5",
+    "yahoo-finance2": "^3.15.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
